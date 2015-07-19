@@ -1,7 +1,6 @@
 (ns fb-graph-api.oauth
   (:require [clojure.data.json :as json]
             [clojure.string :as str]
-            [clojure.tools.logging :as log]
             [org.httpkit.client :as http]))
 
 (def ^{:private true} authorize-url "https://www.facebook.com/dialog/oauth")
