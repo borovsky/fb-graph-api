@@ -2,10 +2,12 @@
  :source-paths #{"src"}
  :resource-paths #{"src"}
  :dependencies '[[org.clojure/clojure "1.7.0" :scope "provided"]
-                 
                  [adzerk/bootlaces "0.1.9" :scope "test"]
                  [jeluard/boot-notify    "0.2.0"      :scope "test"]
-                 [zilti/boot-midje "0.1.2"   :scope "test"]
+                 [zilti/boot-midje "0.2.1-SNAPSHOT"   :scope "test"]
+                 [boot/core        "2.1.2" :scope "test"]
+                 [http-kit.fake    "0.2.1" :scope "test"]
+
                                         ; Backend
                  [http-kit "2.1.19" :exclusions [org.clojure/clojure]]
                  [org.clojure/data.json "0.2.6"]

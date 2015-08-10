@@ -1,4 +1,5 @@
 (ns fb-graph-api.oauth-test
+  (:use org.httpkit.fake)
   (:require [fb-graph-api.oauth :refer :all]
             [midje.sweet :refer :all]
             [org.httpkit.client :as http]))
@@ -15,77 +16,49 @@
 
 (facts "#access-token"
   (fact "Exchanging correct code to user token"
-    (access-token ..app_id.. ..app_secret.. ..redirect_uri.. ..code..) =>
-    {:access-token "TOKEN" }
-    (provided
-      (http/get "https://graph.facebook.com/v2.3/oauth/access_token"
-                {:query-params {:client_id ..app_id..
-                                :client_secret ..app_secret..
-                                :redirect_uri ..redirect_uri..
-                                :code ..code..}}) =>
-        (delay
-         {:status 200
-          :body "{\"access_token\":\"TOKEN\",\"token_type\":\"bearer\",\"expires_in\":5181690}"})))
+    (background
+     (around :facts (with-fake-http ["https://graph.facebook.com/v2.4/access_token"
+                                     "{\"access_token\":\"TOKEN\",\"token_type\":\"bearer\",\"expires_in\":5181690}"] ?form)))
+    @(access-token ..app_id.. ..app_secret.. ..redirect_uri.. ..code..) =>
+    {:access_token "TOKEN", :token_type "bearer", :expires_in 5181690})
 
-  (fact "Exchanging incorrect code to user token throws exception"
-    (access-token ..app_id.. ..app_secret.. ..redirect_uri.. ..bad_code..) =>
-    (throws Exception "Failed to retrieve access token because of error: ERROR")
-    (provided
-      (http/get "https://graph.facebook.com/v2.3/oauth/access_token"
-                {:query-params {:client_id ..app_id..
-                                :client_secret ..app_secret..
-                                :redirect_uri ..redirect_uri..
-                                :code ..bad_code..}}) =>
-        (delay
-         {:status 500
-          :body (str "{\"error\": {\"message\": \"ERROR\","
-                     "\"type\": \"OAuthException\",\"code\": 100}}")})))
+  (fact "Exchanging incorrect code to user token returns error"
+    (background
+     (around :facts (with-fake-http ["https://graph.facebook.com/v2.4/access_token"
+                                     {:status 500
+                                      :body (str "{\"error\": {\"message\": \"ERROR\","
+                                                 "\"type\": \"OAuthException\",\"code\": 100}}")}] ?form)))
+    @(access-token ..app_id.. ..app_secret.. ..redirect_uri.. ..bad_code..) =>
+      {:error {:code 100, :message "ERROR", :type "OAuthException"}})
 
-  (fact "Error while exchanging data throws exception"
-    (access-token ..app_id.. ..app_secret.. ..redirect_uri.. ..code..) =>
-    (throws Exception "Request failed")
-    (provided
-      (http/get "https://graph.facebook.com/v2.3/oauth/access_token"
-                {:query-params {:client_id ..app_id..
-                                :client_secret ..app_secret..
-                                :redirect_uri ..redirect_uri..
-                                :code ..code..}}) =>
-        (delay
-         {:error (Exception. "Some Exception")}))))
+  (fact "Connection error while exchanging data returns error"
+    (background
+     (around :facts (with-fake-http ["https://graph.facebook.com/v2.4/access_token"
+                                     {:error (Exception. "Some error")}] ?form)))
+    @(access-token ..app_id.. ..app_secret.. ..redirect_uri.. ..bad_code..) =>
+    (just {:error anything})))
 
 (facts "#request-app-only-token"
   (fact "Requesting app token using correct parameters"
-    (request-app-only-token ..app_id.. ..app_secret..) =>
-    {:access-token "TOKEN" }
-    (provided
-      (http/get "https://graph.facebook.com/v2.3/oauth/access_token"
-                {:query-params {:client_id ..app_id..
-                                :client_secret ..app_secret..
-                                :grant_type "client_credentials"}}) =>
-        (delay
-         {:status 200
-          :body "{\"access_token\":\"TOKEN\",\"token_type\":\"bearer\"}"})))
+    (background
+     (around :facts (with-fake-http ["https://graph.facebook.com/v2.4/access_token"
+                                     {:status 200
+                                      :body "{\"access_token\":\"TOKEN\",\"token_type\":\"bearer\"}"}] ?form)))
+    @(request-app-only-token ..app_id.. ..app_secret..) =>
+    {:access_token "TOKEN", :token_type "bearer"})
 
   (fact "Exchanging incorrect code to user token throws exception"
-    (request-app-only-token ..app_id.. ..app_secret..) =>
-    (throws Exception "Failed to retrieve access token because of error: ERROR")
-    (provided
-      (http/get "https://graph.facebook.com/v2.3/oauth/access_token"
-                {:query-params {:client_id ..app_id..
-                                :client_secret ..app_secret..
-                                :grant_type "client_credentials"}}) =>
-        (delay
-         {:status 500
-          :body (str "{\"error\": {\"message\": \"ERROR\","
-                     "\"type\": \"OAuthException\",\"code\": 100}}")})))
+    (background
+     (around :facts (with-fake-http ["https://graph.facebook.com/v2.4/access_token"
+                                     {:status 500
+                                      :body (str "{\"error\": {\"message\": \"ERROR\","
+                                                 "\"type\": \"OAuthException\",\"code\": 100}}")}] ?form)))
+    @(request-app-only-token ..app_id.. ..app_secret..) =>
+      {:error {:code 100, :message "ERROR", :type "OAuthException"}})
 
   (fact "Error while exchanging data throws exception"
-    (request-app-only-token ..app_id.. ..app_secret..) =>
-    (throws Exception "Request failed")
-    (provided
-      (http/get "https://graph.facebook.com/v2.3/oauth/access_token"
-                {:query-params {:client_id ..app_id..
-                                :client_secret ..app_secret..
-                                :grant_type "client_credentials"}}) =>
-        (delay
-         {:error (Exception. "Some Exception")}))))
+    (background
+     (around :facts (with-fake-http ["https://graph.facebook.com/v2.4/access_token"
+                                     {:error (Exception. "Some error")}] ?form)))
+    @(request-app-only-token ..app_id.. ..app_secret..) =>
+      (just {:error anything})))
